@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { LogOut } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: '⬡' },
@@ -15,7 +16,14 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.replace('/login');
+    router.refresh();
+  }
 
   return (
     <aside
@@ -155,11 +163,40 @@ export default function Sidebar() {
           flexShrink: 0,
         }}>RA</div>
         {!collapsed && (
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '13px', fontWeight: 600, color: '#F0F9FF' }}>Risk Analyst</div>
             <div style={{ fontSize: '11px', color: '#94A3B8' }}>Senior Officer</div>
           </div>
         )}
+        <button
+          onClick={handleLogout}
+          title="Sign out"
+          aria-label="Sign out"
+          style={{
+            marginLeft: collapsed ? 0 : 'auto',
+            background: 'none',
+            border: 'none',
+            color: '#94A3B8',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '8px',
+            borderRadius: '8px',
+            flexShrink: 0,
+            transition: 'color 0.2s ease, background 0.2s ease',
+          }}
+          onMouseEnter={(event) => {
+            event.currentTarget.style.color = '#F87171';
+            event.currentTarget.style.background = 'rgba(248, 113, 113, 0.1)';
+          }}
+          onMouseLeave={(event) => {
+            event.currentTarget.style.color = '#94A3B8';
+            event.currentTarget.style.background = 'none';
+          }}
+        >
+          <LogOut size={16} />
+        </button>
       </div>
     </aside>
   );
