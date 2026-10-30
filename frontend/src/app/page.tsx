@@ -5,11 +5,11 @@ import MetricCard from '@/components/MetricCard';
 import { useState, useEffect } from 'react';
 
 const recentDecisions = [
-  { id: 'TXN-00842', customer: 'Amara Osei', type: 'Mortgage Loan', amount: '$285,000', score: 742, status: 'APPROVED', confidence: 94, risk: 'LOW', time: '2 mins ago' },
-  { id: 'TXN-00841', customer: 'David Chen', type: 'Business Credit', amount: '$50,000', score: 589, status: 'REVIEW', confidence: 61, risk: 'MEDIUM', time: '7 mins ago' },
-  { id: 'TXN-00840', customer: 'Fatima Al-Rashid', type: 'Personal Loan', amount: '$12,500', score: 478, status: 'REJECTED', confidence: 88, risk: 'HIGH', time: '15 mins ago' },
-  { id: 'TXN-00839', customer: 'James Okonkwo', type: 'Auto Loan', amount: '$32,000', score: 711, status: 'APPROVED', confidence: 91, risk: 'LOW', time: '23 mins ago' },
-  { id: 'TXN-00838', customer: 'Priya Sharma', type: 'Mortgage Loan', amount: '$195,000', score: 668, status: 'APPROVED', confidence: 78, risk: 'MEDIUM', time: '31 mins ago' },
+  { id: 'TXN-00842', customer: 'Amara Osei', type: 'Mortgage Loan', amount: '₦285,000,000', score: 742, status: 'APPROVED', confidence: 94, risk: 'LOW', time: '2 mins ago' },
+  { id: 'TXN-00841', customer: 'David Chen', type: 'Business Credit', amount: '₦50,000,000', score: 589, status: 'REVIEW', confidence: 61, risk: 'MEDIUM', time: '7 mins ago' },
+  { id: 'TXN-00840', customer: 'Fatima Al-Rashid', type: 'Personal Loan', amount: '₦12,500,000', score: 478, status: 'REJECTED', confidence: 88, risk: 'HIGH', time: '15 mins ago' },
+  { id: 'TXN-00839', customer: 'James Okonkwo', type: 'Auto Loan', amount: '₦32,000,000', score: 711, status: 'APPROVED', confidence: 91, risk: 'LOW', time: '23 mins ago' },
+  { id: 'TXN-00838', customer: 'Priya Sharma', type: 'Mortgage Loan', amount: '₦195,000,000', score: 668, status: 'APPROVED', confidence: 78, risk: 'MEDIUM', time: '31 mins ago' },
 ];
 
 const modelMetrics = [
