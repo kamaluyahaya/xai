@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
@@ -10,6 +10,7 @@ import {
   Lock,
   ShieldCheck,
 } from 'lucide-react';
+import { isAuthenticated, signIn } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,7 +19,13 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (isAuthenticated()) {
+      router.replace('/');
+    }
+  }, [router]);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!password) {
@@ -29,27 +36,15 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        setError(data?.error ?? 'Authentication failed. Please try again.');
-        setPassword('');
-        setLoading(false);
-        return;
-      }
-
-      router.replace('/');
-      router.refresh();
-    } catch {
-      setError('Unable to reach the authentication service.');
+    if (!signIn(password)) {
+      setError('Incorrect administrator password.');
+      setPassword('');
       setLoading(false);
+      return;
     }
+
+    router.replace('/');
+    router.refresh();
   }
 
   return (

@@ -1,21 +1,19 @@
-export const SESSION_COOKIE = 'xai_admin_session';
-export const SESSION_MAX_AGE = 60 * 60 * 8;
+export const ADMIN_PASSWORD = 'admin123';
 
-const DEFAULT_ADMIN_PASSWORD = 'admin123';
-const DEFAULT_AUTH_SECRET = 'xai-banking-session-secret';
+export const AUTH_STORAGE_KEY = 'xai_admin_authenticated';
 
-export function getAdminPassword() {
-  return process.env.ADMIN_PASSWORD ?? DEFAULT_ADMIN_PASSWORD;
+export function isAuthenticated() {
+  if (typeof window === 'undefined') return false;
+  return window.localStorage.getItem(AUTH_STORAGE_KEY) === 'true';
 }
 
-export function getAuthSecret() {
-  return process.env.AUTH_SECRET ?? DEFAULT_AUTH_SECRET;
+export function signIn(password: string) {
+  if (password !== ADMIN_PASSWORD) return false;
+  window.localStorage.setItem(AUTH_STORAGE_KEY, 'true');
+  return true;
 }
 
-export async function createSessionToken(password: string, secret: string) {
-  const data = new TextEncoder().encode(`xai-banking:${password}:${secret}`);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
+export function signOut() {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(AUTH_STORAGE_KEY);
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AuthGuard from "@/components/AuthGuard";
 
 export const metadata: Metadata = {
   title: "XAI Banking System | Explainable AI for Decision Making",
@@ -29,7 +30,7 @@ export default function RootLayout({
         />
       </head>
       <body className="gradient-bg grid-overlay min-h-screen">
-        {children}
+        <AuthGuard>{children}</AuthGuard>
       </body>
     </html>
   );

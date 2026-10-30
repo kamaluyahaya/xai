@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
+import { signOut } from '@/lib/auth';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: '⬡' },
@@ -19,8 +20,8 @@ export default function Sidebar() {
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
 
-  async function handleLogout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
+  function handleLogout() {
+    signOut();
     router.replace('/login');
     router.refresh();
   }
