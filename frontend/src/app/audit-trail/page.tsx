@@ -2,6 +2,7 @@
 
 import Sidebar from '@/components/Sidebar';
 import { useState } from 'react';
+import { formatNaira, loanPurposeLabels, useEntries } from '@/lib/entries';
 
 const auditLogs = [
   {
@@ -101,7 +102,31 @@ const complianceStats = [
 
 export default function AuditTrailPage() {
   const [filter, setFilter] = useState('ALL');
-  const filtered = auditLogs.filter(l => filter === 'ALL' || l.decision === filter);
+  const [query, setQuery] = useState('');
+  const entries = useEntries();
+
+  const lodgedLogs = entries.map(entry => ({
+    id: `AUD-${entry.id}`,
+    timestamp: new Date(entry.createdAt).toLocaleString('en-NG'),
+    transactionId: entry.id,
+    customer: entry.fullName || 'Unknown Customer',
+    loanType: loanPurposeLabels[entry.loanPurpose] ?? entry.loanPurpose,
+    amount: formatNaira(entry.loanAmount),
+    decision: entry.decision,
+    confidence: entry.confidence,
+    modelVersion: 'XGB-v3.2.1',
+    explainabilityMethod: 'SHAP+LIME',
+    reviewedBy: 'System',
+    shapTopFeature: `Credit Score (${entry.creditScore})`,
+    riskScore: entry.riskScore,
+    complianceFlags: entry.decision === 'REVIEW' ? ['MANUAL_REVIEW_REQUIRED'] : [],
+    processingMs: 142,
+  }));
+  const allLogs = [...lodgedLogs, ...auditLogs];
+  const filtered = allLogs.filter(l =>
+    (filter === 'ALL' || l.decision === filter) &&
+    (l.customer.toLowerCase().includes(query.toLowerCase()) || l.transactionId.toLowerCase().includes(query.toLowerCase()))
+  );
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -181,13 +206,14 @@ export default function AuditTrailPage() {
                 transition: 'all 0.2s ease',
               }}
             >
-              {f} {f !== 'ALL' && `(${auditLogs.filter(l => l.decision === f).length})`}
+              {f} {f !== 'ALL' && `(${allLogs.filter(l => l.decision === f).length})`}
             </button>
           ))}
 
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '11px', color: '#94A3B8' }}>Search:</span>
-            <input className="xai-input" style={{ width: '200px', padding: '6px 12px', fontSize: '12px' }} placeholder="Customer name, ID..." />
+            <input className="xai-input" style={{ width: '200px', padding: '6px 12px', fontSize: '12px' }} placeholder="Customer name, ID..."
+              value={query} onChange={e => setQuery(e.target.value)} />
           </div>
         </div>
 

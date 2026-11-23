@@ -3,6 +3,7 @@
 import Sidebar from '@/components/Sidebar';
 import MetricCard from '@/components/MetricCard';
 import { useState, useEffect } from 'react';
+import { formatNaira, loanPurposeLabels, useEntries } from '@/lib/entries';
 
 const recentDecisions = [
   { id: 'TXN-00842', customer: 'Amara Osei', type: 'Mortgage Loan', amount: '₦285,000,000', score: 742, status: 'APPROVED', confidence: 94, risk: 'LOW', time: '2 mins ago' },
@@ -30,6 +31,19 @@ const featureImportance = [
 export default function DashboardPage() {
   const [liveCount, setLiveCount] = useState(1247);
   const [animTick, setAnimTick] = useState(0);
+  const entries = useEntries();
+
+  const lodgedRows = entries.map(entry => ({
+    id: entry.id,
+    customer: entry.fullName || 'Unknown Customer',
+    type: loanPurposeLabels[entry.loanPurpose] ?? entry.loanPurpose,
+    amount: formatNaira(entry.loanAmount),
+    score: entry.creditScore,
+    status: entry.decision,
+    confidence: entry.confidence,
+    risk: entry.riskScore < 33 ? 'LOW' : entry.riskScore < 66 ? 'MEDIUM' : 'HIGH',
+  }));
+  const rows = [...lodgedRows, ...recentDecisions].slice(0, 8);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -180,7 +194,7 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentDecisions.map((row, idx) => (
+                  {rows.map((row, idx) => (
                     <tr key={idx} style={{ cursor: 'pointer' }}>
                       <td>
                         <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#38BDF8' }}>{row.id}</span>

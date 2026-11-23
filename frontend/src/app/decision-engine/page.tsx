@@ -1,25 +1,42 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import Sidebar from '@/components/Sidebar';
 import SHAPChart from '@/components/SHAPChart';
 import ConfidenceMeter from '@/components/ConfidenceMeter';
+import {
+  CustomerEntry,
+  createEntryId,
+  digitsOnly,
+  formatNaira,
+  formatNumber,
+  saveEntry,
+} from '@/lib/entries';
 
 interface LoanApplication {
+  fullName: string;
+  phone: string;
+  email: string;
+  age: string;
+  address: string;
   creditScore: number;
-  annualIncome: number;
-  loanAmount: number;
+  annualIncome: string;
+  loanAmount: string;
   loanTerm: number;
   employmentYears: number;
-  existingDebts: number;
+  existingDebts: string;
   loanPurpose: string;
   homeOwnership: string;
   paymentHistory: string;
 }
 
 function computeDecision(app: LoanApplication) {
-  const dti = (app.existingDebts * 12 + (app.loanAmount / app.loanTerm)) / (app.annualIncome / 12);
-  const ltv = app.loanAmount / app.annualIncome;
+  const annualIncome = Number(app.annualIncome) || 0;
+  const loanAmount = Number(app.loanAmount) || 0;
+  const existingDebts = Number(app.existingDebts) || 0;
+  const safeIncome = Math.max(annualIncome, 1);
+  const dti = (existingDebts * 12 + (loanAmount / app.loanTerm)) / (safeIncome / 12);
+  const ltv = loanAmount / safeIncome;
 
   let score = 0;
   if (app.creditScore >= 750) score += 35;
@@ -49,7 +66,7 @@ function computeDecision(app: LoanApplication) {
   const employImpact = (app.employmentYears - 2) / 8;
   const paymentImpact = app.paymentHistory === 'excellent' ? 0.25 : app.paymentHistory === 'good' ? 0.12 : app.paymentHistory === 'fair' ? -0.05 : -0.28;
   const ltvImpact = -(ltv - 2) * 0.15;
-  const incomeImpact = (app.annualIncome - 45000) / 150000;
+  const incomeImpact = (annualIncome - 45000) / 150000;
 
   const shapFeatures = [
     { name: 'Credit Score', value: Math.max(-0.5, Math.min(0.5, creditImpact)), rawValue: app.creditScore.toString(), impact: creditImpact >= 0 ? 'positive' as const : 'negative' as const },
@@ -57,7 +74,7 @@ function computeDecision(app: LoanApplication) {
     { name: 'Employment Duration', value: Math.max(-0.4, Math.min(0.4, employImpact)), rawValue: `${app.employmentYears} yrs`, impact: employImpact >= 0 ? 'positive' as const : 'negative' as const },
     { name: 'Payment History', value: Math.max(-0.45, Math.min(0.45, paymentImpact)), rawValue: app.paymentHistory, impact: paymentImpact >= 0 ? 'positive' as const : 'negative' as const },
     { name: 'Loan-to-Value Ratio', value: Math.max(-0.35, Math.min(0.35, ltvImpact)), rawValue: `${ltv.toFixed(2)}x`, impact: ltvImpact >= 0 ? 'positive' as const : 'negative' as const },
-    { name: 'Annual Income', value: Math.max(-0.3, Math.min(0.3, incomeImpact)), rawValue: `$${app.annualIncome.toLocaleString()}`, impact: incomeImpact >= 0 ? 'positive' as const : 'negative' as const },
+    { name: 'Annual Income', value: Math.max(-0.3, Math.min(0.3, incomeImpact)), rawValue: formatNaira(annualIncome), impact: incomeImpact >= 0 ? 'positive' as const : 'negative' as const },
   ].sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
 
   const clampedScore = Math.max(0, Math.min(100, score));
@@ -72,26 +89,75 @@ function computeDecision(app: LoanApplication) {
 }
 
 const defaultApp: LoanApplication = {
+  fullName: '',
+  phone: '',
+  email: '',
+  age: '',
+  address: '',
   creditScore: 720,
-  annualIncome: 85000,
-  loanAmount: 150000,
+  annualIncome: '85000',
+  loanAmount: '150000',
   loanTerm: 360,
   employmentYears: 4,
-  existingDebts: 800,
+  existingDebts: '800',
   loanPurpose: 'home_purchase',
   homeOwnership: 'rent',
   paymentHistory: 'good',
+};
+
+const fieldLabelStyle: CSSProperties = {
+  fontSize: '11px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase',
+  letterSpacing: '0.06em', display: 'block', marginBottom: '6px',
 };
 
 export default function DecisionEnginePage() {
   const [app, setApp] = useState<LoanApplication>(defaultApp);
   const [result, setResult] = useState<ReturnType<typeof computeDecision> | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [lodgedEntry, setLodgedEntry] = useState<CustomerEntry | null>(null);
 
   const handleAnalyze = () => {
+    if (!app.fullName.trim()) {
+      setError('Please enter the customer’s full name before submitting.');
+      return;
+    }
+    if (!app.phone.trim()) {
+      setError('Please enter the customer’s phone number before submitting.');
+      return;
+    }
+
+    setError('');
+    setLodgedEntry(null);
     setLoading(true);
     setTimeout(() => {
-      setResult(computeDecision(app));
+      const decisionResult = computeDecision(app);
+      const entry: CustomerEntry = {
+        id: createEntryId(),
+        fullName: app.fullName.trim(),
+        phone: app.phone.trim(),
+        email: app.email.trim(),
+        age: app.age,
+        address: app.address.trim(),
+        creditScore: app.creditScore,
+        annualIncome: app.annualIncome,
+        loanAmount: app.loanAmount,
+        loanTerm: app.loanTerm,
+        employmentYears: app.employmentYears,
+        existingDebts: app.existingDebts,
+        loanPurpose: app.loanPurpose,
+        homeOwnership: app.homeOwnership,
+        paymentHistory: app.paymentHistory,
+        decision: decisionResult.decision,
+        confidence: decisionResult.confidence,
+        riskScore: decisionResult.riskScore,
+        dti: decisionResult.dti,
+        score: decisionResult.score,
+        createdAt: new Date().toISOString(),
+      };
+      saveEntry(entry);
+      setResult(decisionResult);
+      setLodgedEntry(entry);
       setLoading(false);
     }, 1800);
   };
@@ -99,6 +165,8 @@ export default function DecisionEnginePage() {
   const update = (key: keyof LoanApplication, val: string | number) => {
     setApp(prev => ({ ...prev, [key]: val }));
     setResult(null);
+    setError('');
+    setLodgedEntry(null);
   };
 
   return (
@@ -118,6 +186,28 @@ export default function DecisionEnginePage() {
           </p>
         </div>
 
+        {error && (
+          <div style={{
+            marginBottom: '20px', padding: '12px 16px', borderRadius: '10px',
+            background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.3)',
+            color: '#F87171', fontSize: '12px', fontWeight: 600,
+          }}>{error}</div>
+        )}
+
+        {lodgedEntry && (
+          <div style={{
+            marginBottom: '20px', padding: '14px 16px', borderRadius: '10px',
+            background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.3)',
+            display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px',
+            color: '#4ADE80', fontSize: '12px', fontWeight: 600,
+          }}>
+            <span style={{ fontSize: '14px' }}>✓ Entry lodged</span>
+            <span style={{ fontFamily: 'monospace', color: '#38BDF8' }}>{lodgedEntry.id}</span>
+            <span style={{ color: '#F0F9FF' }}>{lodgedEntry.fullName} · {formatNaira(lodgedEntry.loanAmount)}</span>
+            <span style={{ marginLeft: 'auto' }}>Decision: {lodgedEntry.decision}</span>
+          </div>
+        )}
+
         <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: '24px' }}>
 
           {/* Application Form */}
@@ -135,6 +225,49 @@ export default function DecisionEnginePage() {
             <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#F0F9FF', marginBottom: '20px' }}>Loan Application Form</h2>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+              {/* Customer Details */}
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#38BDF8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px' }}>
+                  Customer Details
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={fieldLabelStyle} htmlFor="customer-full-name">Full Name</label>
+                    <input id="customer-full-name" type="text" value={app.fullName}
+                      onChange={e => update('fullName', e.target.value)}
+                      className="xai-input" placeholder="e.g. Amara Osei" autoComplete="name" />
+                  </div>
+                  <div>
+                    <label style={fieldLabelStyle} htmlFor="customer-phone">Phone Number</label>
+                    <input id="customer-phone" type="tel" value={app.phone}
+                      onChange={e => update('phone', e.target.value)}
+                      className="xai-input" placeholder="+234 801 234 5678" autoComplete="tel" />
+                  </div>
+                  <div>
+                    <label style={fieldLabelStyle} htmlFor="customer-email">Email Address <span style={{ textTransform: 'none', color: '#475569' }}>(optional)</span></label>
+                    <input id="customer-email" type="email" value={app.email}
+                      onChange={e => update('email', e.target.value)}
+                      className="xai-input" placeholder="customer@example.com" autoComplete="email" />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={fieldLabelStyle} htmlFor="customer-age">Age</label>
+                      <input id="customer-age" type="number" min="18" max="100" value={app.age}
+                        onChange={e => update('age', e.target.value)}
+                        className="xai-input" placeholder="32" />
+                    </div>
+                    <div>
+                      <label style={fieldLabelStyle} htmlFor="customer-address">Residential Address</label>
+                      <input id="customer-address" type="text" value={app.address}
+                        onChange={e => update('address', e.target.value)}
+                        className="xai-input" placeholder="City, State" autoComplete="street-address" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ height: '1px', background: 'rgba(56,189,248,0.1)' }} />
 
               {/* Credit Score */}
               <div>
@@ -157,8 +290,9 @@ export default function DecisionEnginePage() {
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '6px' }}>Annual Income</label>
                 <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#38BDF8', fontWeight: 600 }}>$</span>
-                  <input type="number" value={app.annualIncome} onChange={e => update('annualIncome', +e.target.value)}
+                  <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#38BDF8', fontWeight: 600 }}>₦</span>
+                  <input type="text" inputMode="numeric" value={formatNumber(app.annualIncome)}
+                    onChange={e => update('annualIncome', digitsOnly(e.target.value))}
                     className="xai-input" style={{ paddingLeft: '24px' }} placeholder="85,000"
                   />
                 </div>
@@ -168,8 +302,9 @@ export default function DecisionEnginePage() {
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '6px' }}>Loan Amount</label>
                 <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#38BDF8', fontWeight: 600 }}>$</span>
-                  <input type="number" value={app.loanAmount} onChange={e => update('loanAmount', +e.target.value)}
+                  <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#38BDF8', fontWeight: 600 }}>₦</span>
+                  <input type="text" inputMode="numeric" value={formatNumber(app.loanAmount)}
+                    onChange={e => update('loanAmount', digitsOnly(e.target.value))}
                     className="xai-input" style={{ paddingLeft: '24px' }} placeholder="150,000"
                   />
                 </div>
@@ -205,8 +340,9 @@ export default function DecisionEnginePage() {
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '6px' }}>Monthly Debt Payments</label>
                 <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#38BDF8', fontWeight: 600 }}>$</span>
-                  <input type="number" value={app.existingDebts} onChange={e => update('existingDebts', +e.target.value)}
+                  <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#38BDF8', fontWeight: 600 }}>₦</span>
+                  <input type="text" inputMode="numeric" value={formatNumber(app.existingDebts)}
+                    onChange={e => update('existingDebts', digitsOnly(e.target.value))}
                     className="xai-input" style={{ paddingLeft: '24px' }} placeholder="800"
                   />
                 </div>
@@ -372,10 +508,12 @@ export default function DecisionEnginePage() {
                     <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#F0F9FF', marginBottom: '16px' }}>Application Summary</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                       {[
+                        { label: 'Customer', value: app.fullName || '—', good: true },
+                        { label: 'Phone Number', value: app.phone || '—', good: true },
                         { label: 'DTI Ratio', value: `${(result.dti * 100).toFixed(1)}%`, good: result.dti < 0.43 },
                         { label: 'Credit Score', value: app.creditScore, good: app.creditScore >= 700 },
-                        { label: 'Loan Amount', value: `$${app.loanAmount.toLocaleString()}`, good: true },
-                        { label: 'Annual Income', value: `$${app.annualIncome.toLocaleString()}`, good: true },
+                        { label: 'Loan Amount', value: formatNaira(app.loanAmount), good: true },
+                        { label: 'Annual Income', value: formatNaira(app.annualIncome), good: true },
                         { label: 'Employment', value: `${app.employmentYears} years`, good: app.employmentYears >= 2 },
                         { label: 'Model Score', value: result.score.toFixed(0), good: result.score >= 55 },
                       ].map((item, i) => (

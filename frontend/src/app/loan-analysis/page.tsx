@@ -146,8 +146,8 @@ export default function LoanAnalysisPage() {
                 <div style={{ padding: '20px 24px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '16px', marginBottom: '20px' }}>
                     {[
-                      { label: 'Loan Amount', value: `$${app.loanAmount.toLocaleString()}`, color: '#38BDF8' },
-                      { label: 'Annual Income', value: `$${app.income.toLocaleString()}`, color: '#F0F9FF' },
+                      { label: 'Loan Amount', value: `₦${app.loanAmount.toLocaleString('en-NG')}`, color: '#38BDF8' },
+                      { label: 'Annual Income', value: `₦${app.income.toLocaleString('en-NG')}`, color: '#F0F9FF' },
                       { label: 'Credit Score', value: app.creditScore, color: app.creditScore >= 700 ? '#4ADE80' : app.creditScore >= 600 ? '#FBBF24' : '#F87171' },
                       { label: 'DTI Ratio', value: `${app.dti}%`, color: app.dti < 43 ? '#4ADE80' : '#F87171' },
                       { label: 'Collateral', value: app.collateral, color: '#A78BFA' },
